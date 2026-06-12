@@ -1,82 +1,73 @@
 import { NextResponse } from "next/server";
-import { getDatabase } from "@/db";
-import { sources, insights, insightSources, themes, insightThemes } from "@/db/schema";
-import { getAiClient } from "@/ai";
 import { fetchArticleText } from "@/ingestion/article";
-import { syncToVault } from "@/vault-sync";
+import { extractPdfText } from "@/ingestion/pdf";
+import { ingestText } from "@/ingestion/pipeline";
+
+function unprocessable(error: unknown) {
+  return NextResponse.json(
+    {
+      error: `Could not ingest this source: ${error instanceof Error ? error.message : "unknown error"}`,
+    },
+    { status: 422 },
+  );
+}
+
+async function handleArticle(url: string) {
+  let article;
+  try {
+    article = await fetchArticleText(url);
+  } catch (error) {
+    return unprocessable(error);
+  }
+  const result = await ingestText({
+    sourceType: "article",
+    contentRef: url,
+    text: article.text,
+    insightState: "committed",
+  });
+  return NextResponse.json(result);
+}
+
+async function handlePdf(file: File) {
+  let text;
+  try {
+    text = await extractPdfText(Buffer.from(await file.arrayBuffer()));
+  } catch (error) {
+    return unprocessable(error);
+  }
+  const result = await ingestText({
+    sourceType: "pdf",
+    contentRef: file.name,
+    text,
+    insightState: "committed",
+  });
+  return NextResponse.json(result);
+}
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const contentType = request.headers.get("content-type") ?? "";
 
-  if (body.type !== "article" || typeof body.url !== "string") {
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const type = formData.get("type");
+    const file = formData.get("file");
+
+    if (type === "pdf" && file instanceof File) {
+      return handlePdf(file);
+    }
     return NextResponse.json(
-      { error: "Expected { type: \"article\", url: string }" },
+      { error: "Expected multipart form with type=pdf and a file" },
       { status: 400 },
     );
   }
 
-  let article;
-  try {
-    article = await fetchArticleText(body.url);
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: `Could not ingest this URL: ${error instanceof Error ? error.message : "unknown error"}`,
-      },
-      { status: 422 },
-    );
+  const body = await request.json();
+  if (body.type === "article" && typeof body.url === "string") {
+    return handleArticle(body.url);
   }
 
-  const ai = getAiClient();
-  const extracted = await ai.extractInsights(article.text);
-
-  const database = getDatabase();
-  const source = database.db
-    .insert(sources)
-    .values({ type: "article", contentRef: body.url })
-    .returning()
-    .get();
-
-  const storedInsights = [];
-  for (const item of extracted) {
-    const insight = database.db
-      .insert(insights)
-      .values({ content: item.content, state: "committed" })
-      .returning()
-      .get();
-    database.db
-      .insert(insightSources)
-      .values({ insightId: insight.id, sourceId: source.id })
-      .run();
-
-    const existingThemes = database.db.select().from(themes).all();
-    const themeName = await ai.assignTheme(
-      item.content,
-      existingThemes.map((t) => t.name),
-    );
-    const theme =
-      existingThemes.find(
-        (t) => t.name.toLowerCase() === themeName.toLowerCase(),
-      ) ??
-      database.db
-        .insert(themes)
-        .values({ name: themeName, status: "committed" })
-        .returning()
-        .get();
-    database.db
-      .insert(insightThemes)
-      .values({ insightId: insight.id, themeId: theme.id })
-      .run();
-
-    syncToVault(database, {
-      kind: "insight",
-      id: insight.id,
-      title: insight.content.slice(0, 60),
-      body: insight.content,
-    });
-
-    storedInsights.push(insight);
-  }
-
-  return NextResponse.json({ sourceId: source.id, insights: storedInsights });
+  return NextResponse.json(
+    { error: 'Expected { type: "article", url } or a multipart file upload' },
+    { status: 400 },
+  );
 }

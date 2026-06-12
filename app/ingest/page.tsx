@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 
+type SourceType = "article" | "pdf";
+
 export default function IngestPage() {
+  const [sourceType, setSourceType] = useState<SourceType>("article");
   const [url, setUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "processing" | "done" | "error">(
     "idle",
   );
@@ -14,11 +18,20 @@ export default function IngestPage() {
     setStatus("processing");
     setMessage("");
 
-    const response = await fetch("/api/sources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "article", url }),
-    });
+    let response: Response;
+    if (sourceType === "article") {
+      response = await fetch("/api/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "article", url }),
+      });
+    } else {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("type", "pdf");
+      formData.append("file", file);
+      response = await fetch("/api/sources", { method: "POST", body: formData });
+    }
     const body = await response.json();
 
     if (response.ok) {
@@ -27,6 +40,7 @@ export default function IngestPage() {
         `${body.insights.length} Insight${body.insights.length === 1 ? "" : "s"} extracted and committed.`,
       );
       setUrl("");
+      setFile(null);
     } else {
       setStatus("error");
       setMessage(body.error ?? "Something went wrong.");
@@ -38,19 +52,47 @@ export default function IngestPage() {
       <h2>Ingest a Source</h2>
       <form className="settings-form" onSubmit={handleSubmit}>
         <label>
-          Article URL
-          <input
-            type="url"
-            required
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/article"
-          />
-          <span className="hint">
-            Paste a link to an article. The content is fetched, Insights are
-            extracted by Claude, and each one is filed under a Theme.
-          </span>
+          Source type
+          <select
+            value={sourceType}
+            onChange={(e) => setSourceType(e.target.value as SourceType)}
+          >
+            <option value="article">Article (URL)</option>
+            <option value="pdf">PDF (upload)</option>
+          </select>
         </label>
+
+        {sourceType === "article" ? (
+          <label>
+            Article URL
+            <input
+              type="url"
+              required
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/article"
+            />
+            <span className="hint">
+              Paste a link to an article. The content is fetched, Insights are
+              extracted by Claude, and each one is filed under a Theme.
+            </span>
+          </label>
+        ) : (
+          <label>
+            PDF file
+            <input
+              type="file"
+              required
+              accept="application/pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <span className="hint">
+              Upload a PDF document. Its text is parsed server-side and
+              Insights are extracted by Claude.
+            </span>
+          </label>
+        )}
+
         <button type="submit" disabled={status === "processing"}>
           {status === "processing" ? "Extracting…" : "Ingest"}
         </button>
