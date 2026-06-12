@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 
-type SourceType = "article" | "pdf" | "image";
+type SourceType = "article" | "pdf" | "image" | "meeting_note" | "workspace_page";
 
 export default function IngestPage() {
   const [sourceType, setSourceType] = useState<SourceType>("article");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
   const [status, setStatus] = useState<"idle" | "processing" | "done" | "error">(
     "idle",
   );
@@ -24,6 +26,12 @@ export default function IngestPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "article", url }),
+      });
+    } else if (sourceType === "meeting_note" || sourceType === "workspace_page") {
+      response = await fetch("/api/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: sourceType, title, text }),
       });
     } else {
       if (!file) return;
@@ -47,6 +55,8 @@ export default function IngestPage() {
       );
       setUrl("");
       setFile(null);
+      setTitle("");
+      setText("");
     } else {
       setStatus("error");
       setMessage(body.error ?? "Something went wrong.");
@@ -66,6 +76,8 @@ export default function IngestPage() {
             <option value="article">Article (URL)</option>
             <option value="pdf">PDF (upload)</option>
             <option value="image">Image / photo (upload)</option>
+            <option value="meeting_note">Meeting Note (paste)</option>
+            <option value="workspace_page">Workspace Page (paste)</option>
           </select>
         </label>
 
@@ -98,6 +110,36 @@ export default function IngestPage() {
               Insights are extracted by Claude.
             </span>
           </label>
+        ) : sourceType === "meeting_note" || sourceType === "workspace_page" ? (
+          <>
+            <label>
+              Title
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={
+                  sourceType === "meeting_note"
+                    ? "e.g. Sprint planning 12 June"
+                    : "e.g. Project Wiki — Architecture"
+                }
+              />
+            </label>
+            <label>
+              Content
+              <textarea
+                required
+                rows={10}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Paste the text from Apple Notes, OneNote, Notion, or Obsidian…"
+              />
+              <span className="hint">
+                Copy the note or page content from your tool and paste it here.
+                Insights are extracted and committed immediately.
+              </span>
+            </label>
+          </>
         ) : (
           <label>
             Image file

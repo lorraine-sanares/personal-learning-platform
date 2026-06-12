@@ -87,8 +87,31 @@ export async function POST(request: Request) {
     return handleArticle(body.url);
   }
 
+  if (
+    (body.type === "meeting_note" || body.type === "workspace_page") &&
+    typeof body.text === "string"
+  ) {
+    const text = body.text.trim();
+    if (!text) {
+      return NextResponse.json(
+        { error: "Pasted text must not be empty" },
+        { status: 400 },
+      );
+    }
+    const result = await ingestText({
+      sourceType: body.type,
+      contentRef:
+        typeof body.title === "string" && body.title.trim()
+          ? body.title.trim()
+          : `${body.type} ${new Date().toISOString()}`,
+      text,
+      insightState: "committed",
+    });
+    return NextResponse.json(result);
+  }
+
   return NextResponse.json(
-    { error: 'Expected { type: "article", url } or a multipart file upload' },
+    { error: 'Expected { type: "article", url }, pasted text, or a file upload' },
     { status: 400 },
   );
 }
