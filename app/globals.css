@@ -177,6 +177,76 @@ body {
   gap: 0.5rem;
 }
 
+.count-badge {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0.1em 0.45em;
+  border-radius: 999px;
+  background: #c62828;
+  color: #fff;
+  font-size: 0.7em;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.draft-list {
+  list-style: none;
+}
+
+.draft-item {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+}
+
+.draft-content {
+  margin-bottom: 0.35rem;
+}
+
+.draft-source {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 0.75rem;
+}
+
+.theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.theme-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.draft-actions button {
+  padding: 0.4rem 1rem;
+  margin-right: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.draft-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.draft-actions button.secondary {
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #d0d0d0;
+}
+
 .link-row select {
   padding: 0.4rem 0.6rem;
   border: 1px solid #d0d0d0;
