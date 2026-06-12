@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type SourceType = "article" | "pdf";
+type SourceType = "article" | "pdf" | "image";
 
 export default function IngestPage() {
   const [sourceType, setSourceType] = useState<SourceType>("article");
@@ -28,7 +28,7 @@ export default function IngestPage() {
     } else {
       if (!file) return;
       const formData = new FormData();
-      formData.append("type", "pdf");
+      formData.append("type", sourceType);
       formData.append("file", file);
       response = await fetch("/api/sources", { method: "POST", body: formData });
     }
@@ -36,8 +36,14 @@ export default function IngestPage() {
 
     if (response.ok) {
       setStatus("done");
+      const count = body.insights.length;
+      const isDraft = body.insights.every(
+        (i: { state: string }) => i.state === "draft",
+      );
       setMessage(
-        `${body.insights.length} Insight${body.insights.length === 1 ? "" : "s"} extracted and committed.`,
+        isDraft
+          ? `${count} Draft Insight${count === 1 ? "" : "s"} created — review them in the Backlog.`
+          : `${count} Insight${count === 1 ? "" : "s"} extracted and committed.`,
       );
       setUrl("");
       setFile(null);
@@ -59,6 +65,7 @@ export default function IngestPage() {
           >
             <option value="article">Article (URL)</option>
             <option value="pdf">PDF (upload)</option>
+            <option value="image">Image / photo (upload)</option>
           </select>
         </label>
 
@@ -77,7 +84,7 @@ export default function IngestPage() {
               extracted by Claude, and each one is filed under a Theme.
             </span>
           </label>
-        ) : (
+        ) : sourceType === "pdf" ? (
           <label>
             PDF file
             <input
@@ -89,6 +96,21 @@ export default function IngestPage() {
             <span className="hint">
               Upload a PDF document. Its text is parsed server-side and
               Insights are extracted by Claude.
+            </span>
+          </label>
+        ) : (
+          <label>
+            Image file
+            <input
+              type="file"
+              required
+              accept="image/png,image/jpeg"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <span className="hint">
+              Photo of handwriting or printed text. OCR transcribes it, then
+              Insights are extracted as Drafts for you to review in the
+              Backlog.
             </span>
           </label>
         )}

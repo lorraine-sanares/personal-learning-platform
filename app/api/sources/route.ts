@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchArticleText } from "@/ingestion/article";
 import { extractPdfText } from "@/ingestion/pdf";
+import { extractImageText } from "@/ingestion/ocr";
 import { ingestText } from "@/ingestion/pipeline";
 
 function unprocessable(error: unknown) {
@@ -44,6 +45,23 @@ async function handlePdf(file: File) {
   return NextResponse.json(result);
 }
 
+async function handleImage(file: File) {
+  let text;
+  try {
+    text = await extractImageText(Buffer.from(await file.arrayBuffer()));
+  } catch (error) {
+    return unprocessable(error);
+  }
+  // OCR output is inherently ambiguous, so Insights land in the Backlog as Drafts.
+  const result = await ingestText({
+    sourceType: "image",
+    contentRef: file.name,
+    text,
+    insightState: "draft",
+  });
+  return NextResponse.json(result);
+}
+
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
 
@@ -55,8 +73,11 @@ export async function POST(request: Request) {
     if (type === "pdf" && file instanceof File) {
       return handlePdf(file);
     }
+    if (type === "image" && file instanceof File) {
+      return handleImage(file);
+    }
     return NextResponse.json(
-      { error: "Expected multipart form with type=pdf and a file" },
+      { error: "Expected multipart form with type=pdf|image and a file" },
       { status: 400 },
     );
   }
