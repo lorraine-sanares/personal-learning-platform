@@ -112,3 +112,65 @@ body {
   font-size: 0.85rem;
   color: #2e7d32;
 }
+
+.theme-list {
+  list-style: none;
+  margin-top: 1.5rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.theme-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.theme-name {
+  font-weight: 500;
+  min-width: 180px;
+}
+
+.proposed-badge {
+  color: #b26a00;
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.theme-meta {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.theme-actions button {
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.theme-actions button:hover {
+  background: #f0f0f0;
+}
+
+.link-form {
+  margin-top: 2rem;
+}
+
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.link-row select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
